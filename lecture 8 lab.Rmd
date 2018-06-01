@@ -1,0 +1,95 @@
+---
+title: "Lecture 8 Lab"
+author: "ESM 262/Paige"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#homework 3 hints
+
+```{r}
+#turn into data frame and add a row of fish names
+catches = as.data.frame(catches)
+nloc = ncol(catches)
+#add names
+catches$fish = rownames(catches)
+
+dominant =catches$fish[apply(catches[,1:nloc],2,which.max)]
+#this gives the name of the fish that was the maximum for each column
+
+#this is using the apply command.
+#you can also do this with a for loop but less efficient
+dominant=rep(0,n=nloc)
+for (i in 1:nloc) {
+  mxrow=which.max(catches[,i])
+  pre = which.max(catches[,i-1])
+  dominant[i]=catches$fish[mxrow]
+}
+#multiple things involving more than one column and row usually will require a for loop
+#makes dominant a vector, initialized with zeroes, and runs it for the number of locations
+
+
+#another way to do this: make a data frame and add a location
+dominant = as.data.frame(dominant)
+dominant$location = colnames(catches[,1:nloc])
+
+#reorganize data
+catches_reordered = gather(catches, key="location", value="size", -fish)
+#gather turns this frame into something with column called location, column called size, and moves the fish types into these columns so that all data associated with a location is in the column
+
+#calculate prices
+roeordered = left_join(catches_reordered, prices)
+
+#sum all catches reordered to get total revenue
+totalr=sum(catches_reordered$revenue)
+
+```
+
+
+```{r}
+
+for (i in 1: length(possible_fish)) {
+  for (j in 1:nrow(locs)) { example_catch[i,j]}}
+
+#make a little function based on most frequently caught fish in location, total revenue per location, and total fishery revenue sum. then combine these three little functions into one big function. 
+```
+
+how to we generate automatic tests?
+```{r}
+library(testthat)
+#generating tests reduces bugs, reduces fear lol
+#people develop automatic software that will help you apply tests over and over again
+#we use the testthat package to use tests
+#we need to build and reload every time we install packages
+#tests provides test_dir() which runs all the tests in a subdirectory that begins with the word tests and tests_file("name") runs all tests in a subdirectiry beginning with word "name"
+#based off expectations ie what do we expect our function to do based on input parameters
+#expect_that(function,equals()) so expect_that(2+2,equals(4))
+
+expect_that(2+2,equals(4))
+expect_that(2+2,equals(5))
+#second one gave an error
+
+a=200
+expect_that(a > 2, is_true())
+expect_that(a<2, is_true())
+#gave an error and said wasn't true
+
+
+#test that
+#test that is a wrap around of expect that
+
+#test_that("Function_Name_works", {expect_that(function(damage=zero))})
+#see surge function in index. if you change your function make sure you build and reload
+#library(yourfunctionhere)
+
+#what if we want to have a bunch of tests that we always run?
+#you can put a whole bunch of different tests inside of test that. check out the "test_surge_to_damage" in Naomi's function. you can put a lot of expect_that's into a single test_that function. expect that will be run and these will be the actual tests
+
+#you can also run "test_dir" and it'll run all of your tests. it'll output "ok ok ok ok" if you run this it'll catch all your weird bugs and it'll say mismatches
+
+
+```
+

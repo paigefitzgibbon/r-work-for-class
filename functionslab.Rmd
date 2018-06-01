@@ -103,7 +103,7 @@ pollutant_level = pollutant_level + 0.01* pollutant_level
 # keep track of time
 yr = yr + 1
 }
-#this code is wrong ask them for help
+#this code is wrong don't use it for your homework
 pollutant_level
 yr
 
