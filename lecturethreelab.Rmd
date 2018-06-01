@@ -1,0 +1,296 @@
+---
+title: "frew"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+challenge <- read_csv(readr_example("challenge.csv"))
+
+catagorical: group by something. in order to group, you need to turn things into factors
+
+```{r cars}
+fruit <- c("apple", "banana")
+library(tidyverse)
+ff <- parse_factor(c("apple","banana", "branana"), levels = fruit)
+ff
+#it won't show the branana because it is not an acceptable factor in the fruit 'dictionary'
+```
+
+
+```{r guessing}
+guess_parser("2010-10-01")
+guess_parser("12:01")
+guess_parser("paige")
+#fun stuff, r is smart
+```
+
+```{r challenge}
+readr_example("challenge.csv")
+challenge <- read_csv(readr_example("challenge.csv"))
+#attempts to guess which is the integer and which is the character column, but it guessed wrong and thats why there was 1000 errors lol. this is because the integer turns into an NA and the character string turns into a data. this is because parse_guess only looks at the first rows and so if they are different than the end it'll mess up 
+problems(challenge)
+#the problem was thatR thought there were no trailing characters but actually there was lots of decimals
+#how can we force it to do the right thing?
+
+challenge <- read_csv(readr_example("challenge.csv"), col_types = cols( x = col_integer(), y = col_character()))
+#with this code, we explicitly told read_csv to do the wrong thing, but what we really want to do is have it parse columns as doubles
+
+challenge <- read_csv(
+  readr_example("challenge.csv"), 
+  col_types = cols(
+    x = col_double(),
+    y = col_date()
+  )
+)
+
+#now we can read the csv. notice the data goes in smoothly, indicating that it is doubles
+
+challenge
+
+#14 decimal places is a lot which is why we need the data to be "double"
+#double is a floating point number to the precision of the computer 
+#by explicitly putting a type conversion in the reader, we can have it read the columns correctly
+
+tail(challenge)
+
+#yay! it converted the stuff at the end to dates
+
+```
+
+
+
+```{r cleanup}
+#if you are doing data cleanup in R, the best strategy is to suck in all the data without editing it
+
+challenge2 <- read_csv(readr_example("challenge.csv"), 
+  col_types = cols(.default = col_character())
+)
+
+challenge2
+
+#in this case, it hasn't messed with any of the values(since the columns were explicitly put to be read in as characters). was able to be uploaded smoothly, but interpretation of the columns is wrong. we can see this from the left-justified numbers
+#read it all in, force it all to be character, then later read it in with parson functions
+
+write_csv(challenge, "challenge.csv")
+
+#this function will write out the tibble to a name file
+#doesn't have any type information in it. looks exactly like what we wrote in
+#we can also write it as an rds file, which winds up looking like garbage outside of R
+challenge
+
+#wrap up: we know how to suck data in, and poke it to see what type it is, and convert it using type conversions
+```
+
+
+
+```{r dplyr}
+install.packages("nycflights13")
+library(nycflights13)
+nycflights13::flights
+
+#we are referring to tibbles that are within this package library
+#dplyr is a way to slice and chop tabular data
+#can pick out observations according to value
+
+#filtering: can filter out certain rows ie all flights leaving from SFO
+#selecting: to pick columns out: when did all flights leave, when did they arrive, and disregard all other columns
+#mutate: create a new variable value by manipulating existing variables
+
+flights
+new <- filter(flights, month == 1 & day == 1)
+head(flights)
+#check out the logical operators in 5.2.2
+
+#selecting! pulling columns out
+
+flights
+select(flights, year, month, day)
+#the selection gives us the same amount of rows but less columns 
+
+flights %>% select(year, month, day)
+#just another way to write the selection
+
+#mutate <- add new variables! you can generate new columns this way
+
+flights_sml <- select(flights, 
+  year:day, 
+  ends_with("delay"), 
+  distance, 
+  air_time)
+
+#selects out some columns (7 variables rather than 15)
+
+mutate(flights_sml, gain = arr_delay - dep_delay, speed = distance / air_time)
+#now we have added two new columns: gain and speed
+#these columns were created by manipulating values in other columns
+#kinda like excel
+flights_sml
+#gain will be the negative or positive time delays
+mutate(flights_sml, gain = arr_delay - dep_delay, speed = distance / air_time) %>% select(arr_delay, dep_delay, loss = gain)
+#now i've just selected my new columns and my delay column so i can check them out
+
+#select and filter will be our biggest buddies and mutate will be pretty helpful
+
+#summarize: an aggregate function that allows you to collapse a table into a row
+#if you have a column with 2, NA, 3 and then try to do an arithmatic function "mean" it will return NA. but, if you do na.rm it will remove the NA, ignore it, and calculate the mean from (2+3)/2
+
+summarise(flights, delay = mean(dep_delay, na.rm  = TRUE))
+#this just returns to us what the average delay is for a delayed flight in NYC
+
+by_day <- group_by(flights, year, month, day)
+by_day
+#run aggregator by every unique combo of these values (in this case, run for each unique combo of year, month, day) so it will give us just one answer per each day. grouper will give us ONE ANSWER for each particular date. if we check out the group_by tibble we will see that additional information is burried into it that we cannot see. the 365 groups in the tible represent unique combinations of year, months, and day. even though we can't see the groups, we can use it to control the summarize operation
+
+summarize(by_day, delay=mean(dep_delay, na.rm= TRUE))
+#constructs 365 summarys rather than just one. this gives us the average delay for each day
+
+group_by(flights, year, month, day) %>% 
+  summarize(delay=mean(dep_delay, na.rm= TRUE))
+#does the same stuff but an easier way of typing the code
+
+flights %>%
+  group_by(year, month, day) %>% 
+  summarize(delay=mean(dep_delay, na.rm = TRUE))
+#another quick way to type up this grouping and summarizing
+
+#summarize is our friend, it is a really powerful way to display data. can show us the maximum departyure delay by month with just one simple line of code (as seen below)
+
+max <- flights %>% 
+  group_by(month) %>% 
+  summarize(delay=max(arr_delay, na.rm = TRUE))
+#so powerful!! any function you can feed a vector into a spit out a scalar can be used with this function
+
+```
+
+```{r missing values}
+#r puts in NA. testing anything against NA gives you an NA answer aka R saying "i dont know"
+#by definition R doesnt know the answer because it doesn't know what NA is
+
+NA/2
+NA == NA
+NA +10
+#r doesn't like any of this because it doesn't know what NA is
+
+df <- tibble(x=c(1,NA, 3))
+filter(df, x > 1)
+#r is confused about the NA
+
+```
+
+
+```{r examples}
+flights %>% 
+  group_by(month) %>% 
+  summarize(n_flights = n())
+
+#this tells us how many flights occur each month. then we can make an illustrative bar plot
+
+flights %>% 
+  group_by(month) %>% 
+  summarize(n_flights = n()) %>% 
+  ggplot(aes(as.factor(month), n_flights)) + geom_col()
+#pretty nice!!!! put as factor so that we are categorizing as month. needs to have month as a category so it can bin the values rather than be thinking of months as numbers 
+
+
+flights %>% 
+  group_by(month) %>% 
+  summarize_all(mean)
+#calculates the mean of the columns we are interested in by each month! that's why we have 12 months. we got mean year, mean day number of month (lol), mean scheduled departure time, mean scheduled arrival time
+
+
+```
+
+```{r tidydata}
+
+#tidy data 
+
+table1
+#shows number of cases of a disease by country\
+table2
+#bad, non normalized data
+table3
+#shows rate of disease by country, displayed as a complex wad of gunk
+table4a
+#shows country with columns representing years 
+
+#r wants us to understand that some data is intrinsicly better than others. the rules of tidytude means that variables are in columns, observations are in rows, and the values themselves are in cells
+#of all the tables we are examining, only table 1 obeys those constraints. what is the advantage of doing this? we can pick columns or rows when organiing data. we want to ensure that when pulling out rows based on column data the criteria we use to pull our the row can be applied to every row within the coumn
+
+#only table one is formatted correctly 
+
+#in table two, the cases and population are spread out over two rows for each country. the count column's type varies. sometimes it means the case, sometimes it means the population. this is not okay. we want each column ALWAYS to represent the same thing. every cell in the same column must represent the same value(date, height, etc)
+
+#in table two, all particular observations are consistent upon the same row/column, but we have stored an expression as the rate, which r cannot do anything with. r has embedded the rate as a character string rather than as a number value that it can manipulate
+
+#in table 4, there is a classic mistake. having enrollments in 1999, 2000, and etc adding columns forever leads r to mistake a column(variable) for a value. we are cramming multiple observations in a single row. this makes it very difficult to select columns based on year or filter. if adding or deleting observation requires deleting a column something is very wrong. we want to add or delete observations(like disease number by year) based on ROWS
+
+#with properly formatted table 1, we can do things like calculate the rate of disease incidence per 10,000 people. use mutate to add the new column
+
+table1 %>% 
+  mutate(rate=cases/population*10000)
+
+
+
+```
+
+
+```{r spreading}
+
+#if we have single values spread across multiple columns (disease by year) or multiple values crammed into one column (rate of disease displayed as disease/population character) we can use spread and gather to clean up the dataset
+
+#putting back ticks around your data will let us gather data. identify columns that represend data. these become keys. since year is data rather than just a column(variable), the year will become our keys. values within original column then become another colum called 'cases'. key is the column to which the column headings will be placed, value is the area where data will be placed 
+
+table4a %>% 
+  gather(`1999`, `2000`, key = "year", value = "cases")
+
+#super helpful for cleaning up data
+
+tidy4a <- table4a %>% 
+  gather(`1999`, `2000`, key = "year", value = "cases")
+
+#fixed it up
+
+tidy4b <- table4b %>% 
+  gather(`1999`, `2000`, key = "year", value = "population")
+#fixed this one up. now we want to combine them so we have one clean table rather than two fixed tables
+
+left_join(tidy4a,tidy4b)
+#smart left join figured out what with unique combinations of countries and year it can slam together the data
+
+#spread, a single observation spread across multiple rows(since cases and population are both within a single colum and we want them to be in their own unique columns) 
+
+spread(table2, key = type, value = count)
+#nice, created a distinct new column for each unique value. this outputs for us a normalized table
+
+#separate
+#in situations where value needs to be picked apart (RATE COLUMN) we use separate to split up the value. if you want to force it to use a specific separator, you put in ``, sep = "sep here"``
+
+
+table3 %>% 
+  separate(rate, into = c("cases", "population"))
+
+
+#unite
+#allows us to slam two columns together
+
+table5
+#separated century and year.... why
+
+table5 %>% 
+  unite(new, century, year, sep = "") %>% 
+  separate(rate, into = c("cases", "population"), sep = "/")
+
+#normalized table, looking good. now lets make a column with the rate (with some calculation) we will have to change the population and disease from characters into factors in order for r to do the math
+  
+
+table5 %>% 
+  unite(new, century, year, sep = "") %>% 
+  separate(rate, into = c("cases", "population"), sep = "/") %>% 
+  mutate(rate = as.double(cases)/ as.double(population))
+#looking good because we put the characters as doubles so the rate's decimals are all displayed
+
+```
+
